@@ -7,8 +7,13 @@
   <style>
   svg rect,
   svg circle,
+  svg image,
+  svg path,
   svg text {
-    transform-origin: 50% 50%;
+      transform-origin: 50% 50%;
+      cursor: pointer;
+  }
+  svg .selected {
   }
   </style>
 </head>
@@ -26,6 +31,13 @@
         <input type="reset" value="reset" /><br />
         <input type="button" value="パス整形" id="path_create" /><br />
     </form>
+    <form id="select">
+        select_id:<input type="text" id="select_id" /><br />
+        data:<textarea rows="5" id="data_area"></textarea>
+        <input type="button" value="削除" id="delete_button" />
+    </form>
+    <input type="button" value="データ生成" id="create_button" />
+    <div id="post_area"></div>
     <script>
         var draw = SVG('drawing').size(500, 500);
 
@@ -43,6 +55,15 @@
         // 四角形
         // var rect = draw.rect(100, 100).fill('#eee').stroke('#000').dx(200).dy(200).rotate(30);
         var rect = draw.rect(100, 100).fill('rgba(238, 238, 238, 0.5)').stroke('#000').move(200, 200).rotate(30);
+        // 実データを持たせる例
+        rect.data({
+            data: {
+                kind: 'S',
+                seat: 'hoge',
+                key: 'キー',
+                value: 'バリュー'
+            }
+        });
         rect.draggable();
 
         // 円
@@ -54,6 +75,38 @@
         var path = draw.path('m 0 0 l 0 0 l 0 50 l 50 0 z').fill('rgba(153, 182, 247, 0.5)').stroke('#447eff').move(400, 400);
         path.draggable();
 
+        // ViewBox → 表示エリアの限定
+        // 3倍の領域を表示したりもできるが、クリックする地点がズレる
+        var viewbox = draw.viewbox(0, 0, 500, 500)
+
+        // グループ
+        // 課題：回転＋移動を行うとまともに動かない
+        // → 回転と移動を別のグループに設定すると回避できる Σ(ﾟДﾟ)？！
+        var group = draw.group().back();
+        group.rotate(10);
+        group.addClass('group-area');
+        group.fill('none');
+
+        var group_child = group.group();
+        console.log(group_child);
+        group_child.addClass('group-area');
+        group_child.fill('none');
+        group_child.draggable();
+        group_child.add(image);
+        group_child.add(text);
+        group_child.add(rect);
+        group_child.add(circle);
+        group_child.path('M0 0L0 30L30 00z').fill('#000').back();
+
+        // 縦横を取って、中抜きのパスをパスを描けばグルーピング部分はOK？
+        var group_bbox = group.bbox();
+        var x = group_bbox.x;
+        var w = group_bbox.width;
+        var y = group_bbox.y;
+        var h = group_bbox.height;
+        group_child.path("M" + x + " " + y + "L" + w + " " + y + "L" + w + " " + h + "L" + x + " " + h + "z").fill('none').stroke({ color: '#333', width: 3}).back();
+
+        // パス生成時の座標取得
         $('#drawing').on('mousedown', function(e) {
             var x = e.offsetX
             var y = e.offsetY
@@ -65,6 +118,61 @@
             });
         });
 
+        // 元色の取得
+        getNormalColor = function (graphic) {
+            var colors = {};
+            switch (graphic.type) {
+                case 'rect':
+                    colors['fill'] = 'rgba(238, 238, 238, 0.5)';
+                    colors['stroke'] = '#000';
+                    break;
+                case 'circle':
+                    colors['fill'] = 'rgba(220, 245, 168, 0.5)';
+                    colors['stroke'] = '#177300';
+                    break;
+                case 'text':
+                    colors['fill'] = '#f06';
+                    colors['stroke'] = 'none';
+                    break;
+                case 'path':
+                    colors['fill'] = 'rgba(153, 182, 247, 0.5)';
+                    colors['stroke'] = '#447eff';
+                    break;
+                default:
+                    colors['fill'] = 'rgba(170, 170, 170, 0.5)';
+                    colors['stroke'] = '#333';
+                    break;
+            }
+            return colors;
+        };
+
+        // 図形のIDを取得する（トグル）
+        toggleSelectId = function () {
+            var id = this.attr('id');
+            var target = $('#select_id');
+            if (target.val() == id) {
+                target.val('');
+                $('#data_area').val('');
+                this.removeClass('selected');
+                var colors = getNormalColor(this);
+                this.fill(colors['fill']).stroke(colors['stroke']);
+            } else {
+                // 他で選択している箇所を解除
+                $('svg .selected').each(function () {
+                    this.instance.removeClass('selected');
+                    var colors = getNormalColor(this.instance);
+                    this.instance.fill(colors['fill']).stroke(colors['stroke']);
+                });
+
+                // 選択されている場合の色
+                target.val(id);
+                $('#data_area').val(JSON.stringify(this.data('data')));
+                this.addClass('selected');
+                this.fill('rgba(239, 245, 168, 0.5)').stroke('#9f9e00');
+            }
+        };
+
+        // パス生成
         $('#path_create').on('click', function(e) {
             var points = '';
             $('#path_form').children(":text").each(function () {
@@ -75,11 +183,44 @@
                         points += "L ";
                     }
                     points += $(this).val() + " ";
+                    $(this).val('');
                 }
             });
+            // 描画内容がない場合は処理スキップ
+            if (points == "") {
+                return;
+            }
             points += "z";
             var new_path = draw.path(points).fill('rgba(153, 182, 247, 0.5)').stroke('#447eff');
             new_path.draggable();
+            new_path.click(toggleSelectId);
+        });
+
+        // ID取得を各図形に仕込む
+        image.click(toggleSelectId);
+        text.click(toggleSelectId);
+        rect.click(toggleSelectId);
+        circle.click(toggleSelectId);
+        path.click(toggleSelectId);
+
+        // 図形を削除する
+        $('#delete_button').on('click', function() {
+            var id = $('#select_id').val();
+            if (id != "") {
+                $('#' + id).remove();
+            }
+            $('#select_id').val('');
+        });
+
+        // データ抽出処理
+        $('#create_button').on('click', function() {
+            console.log(draw);
+            $('#drawing').each(function () {
+                console.log(this.instance);
+                this.instance.each(function () {
+                    console.log(this.type + " " + this.attr('id'));
+                });
+            });
         });
     </script>
 </body>
