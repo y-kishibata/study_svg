@@ -14,25 +14,73 @@
 </head>
 <body>
     <svg id="drawing" style="border:solid 1px;"></svg>
-
+    <br />
+    <br />
+    <form id="path_form">
+        1:<input type="text" id="path1" value="" /><br />
+        2:<input type="text" id="path2" value="" /><br />
+        3:<input type="text" id="path3" value="" /><br />
+        4:<input type="text" id="path4" value="" /><br />
+        5:<input type="text" id="path5" value="" /><br />
+        6:<input type="text" id="path6" value="" /><br />
+        <input type="reset" value="reset" /><br />
+        <input type="button" value="パス整形" id="path_create" /><br />
+    </form>
     <script>
         var draw = SVG('drawing').size(500, 500);
+
+        // 描画されない領域
         var defs = draw.defs();
 
+        // 画像
         var image = draw.image('inaduma.jpg', 150, 100).dx(30).dy(30);
         image.draggable();
 
+        // テキスト
         var text = draw.text('画像はドラッグ＆ドロップできますか？').move(150, 150).fill('#f06');
         text.draggable();
 
+        // 四角形
         // var rect = draw.rect(100, 100).fill('#eee').stroke('#000').dx(200).dy(200).rotate(30);
         var rect = draw.rect(100, 100).fill('rgba(238, 238, 238, 0.5)').stroke('#000').move(200, 200).rotate(30);
         rect.draggable();
 
+        // 円
         var circle = draw.circle(100).fill('rgba(220, 245, 168, 0.5)').stroke('#177300').dx(300).dy(300);
         circle.attr({'data-id': '3'});
         circle.draggable();
-    </script>
 
+        // 擬似三角形
+        var path = draw.path('m 0 0 l 0 0 l 0 50 l 50 0 z').fill('rgba(153, 182, 247, 0.5)').stroke('#447eff').move(400, 400);
+        path.draggable();
+
+        $('#drawing').on('mousedown', function(e) {
+            var x = e.offsetX
+            var y = e.offsetY
+            $('#path_form').children(":text").each(function () {
+                if ($(this).val() == "") {
+                    $(this).val(x + " " + y);
+                    return false;
+                }
+            });
+        });
+
+        $('#path_create').on('click', function(e) {
+            var points = '';
+            $('#path_form').children(":text").each(function () {
+                if ($(this).val().length > 0) {
+                    if (points == "") {
+                        points += "M ";
+                    } else {
+                        points += "L ";
+                    }
+                    points += $(this).val() + " ";
+                }
+            });
+            points += "z";
+            var new_path = draw.path(points).fill('rgba(153, 182, 247, 0.5)').stroke('#447eff');
+            new_path.draggable();
+        });
+    </script>
 </body>
 </html>
