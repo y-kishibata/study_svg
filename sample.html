@@ -1,0 +1,38 @@
+<html>
+<head>
+  <title>サンプルSVG</title>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+  <script src="svg.js"></script>
+  <script src="svg.draggable.js"></script>
+  <style>
+  svg rect,
+  svg circle,
+  svg text {
+    transform-origin: 50% 50%;
+  }
+  </style>
+</head>
+<body>
+    <svg id="drawing" style="border:solid 1px;"></svg>
+
+    <script>
+        var draw = SVG('drawing').size(500, 500);
+        var defs = draw.defs();
+
+        var image = draw.image('inaduma.jpg', 150, 100).dx(30).dy(30);
+        image.draggable();
+
+        var text = draw.text('画像はドラッグ＆ドロップできますか？').move(150, 150).fill('#f06');
+        text.draggable();
+
+        // var rect = draw.rect(100, 100).fill('#eee').stroke('#000').dx(200).dy(200).rotate(30);
+        var rect = draw.rect(100, 100).fill('rgba(238, 238, 238, 0.5)').stroke('#000').move(200, 200).rotate(30);
+        rect.draggable();
+
+        var circle = draw.circle(100).fill('rgba(220, 245, 168, 0.5)').stroke('#177300').dx(300).dy(300);
+        circle.attr({'data-id': '3'});
+        circle.draggable();
+    </script>
+
+</body>
+</html>
